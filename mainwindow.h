@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 //#include <vector>
+#include <iostream>
 
 //Qt
 #include <QtCore>
@@ -36,9 +37,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    QString path_file = "";
     
 private slots:
-    void on_pushButton_clicked();
     void pointLearningParser();
     void pointUserParser();
     void calculateSVM();
@@ -55,15 +56,14 @@ private:
     Ui::MainWindow *ui;
     
     cv::Mat plot;
-    //cv::Mat plot_mirror;
-    
     QImage q_plot;
-    //QImage q_plot_mirror;
     
     std::map<int, cv::Point3i> L_points;
     std::map<int, cv::Point3i> U_points;
+    int num_p_L, num_p_U;
     
-    void paintPoint( QString &, QString & );
+    //void paintPoint( QString &, QString & );
+    void presetPlot();
    
 };
 #endif // MAINWINDOW_H
