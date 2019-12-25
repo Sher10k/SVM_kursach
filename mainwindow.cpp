@@ -9,6 +9,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Button click 
     connect( ui->addLearningPoint, SIGNAL(clicked()), this, SLOT(pointLearningParser()) );
     connect( ui->addUserPoint, SIGNAL(clicked()), this, SLOT(pointUserParser()) );
+    connect( ui->calculSVM, SIGNAL(clicked()), this, SLOT(calculateSVM()) );
     
     // Zeroing number of map
     num_p_L = 0;
@@ -39,9 +40,13 @@ MainWindow::~MainWindow()
 void MainWindow::presetPlot()
 {
     // Create plot white color
-    plot = cv::Mat::eye( 380, 380, CV_8UC3 );
+    plot = cv::Mat::ones( height, width, CV_8UC3 );
+    line_mask = cv::Mat::ones( height, width, CV_8UC3 );
     for ( size_t i = 0; i < plot.total(); i++ )
+    {
         plot.at< cv::Vec3b >(int(i)) = cv::Vec3b( 255, 255, 255 );
+        line_mask.at< cv::Vec3b >(int(i)) = cv::Vec3b( 255, 255, 255 );
+    }
     
     // Add axis
     // axis X1
@@ -63,11 +68,13 @@ void MainWindow::presetPlot()
     
     cv::flip( plot, plot, 0);
     
+    //cv::addWeighted( line_mask, 0.2, plot, 1.0, 0.0, plot );
+    
     cv::putText( plot, "X1", cv::Point(340, 360), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0,0,255), 2 );
     cv::putText( plot, "X2", cv::Point(10, 25), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0,255,0), 2 );
     
     cv::cvtColor( plot, plot, cv::COLOR_BGR2RGB );
-    //cv::resize( plot, plot, cv::Size(380, 380), 0, 0, cv::INTER_LINEAR );
+    //cv::resize( plot, plot, cv::Size(height, width), 0, 0, cv::INTER_LINEAR );
     q_plot = QImage( plot.data, 
                      plot.cols, 
                      plot.rows, 
@@ -128,6 +135,63 @@ void MainWindow::pointUserParser()
 
 void MainWindow::calculateSVM()
 {
+    cv::Mat trainingDataMat = cv::Mat::zeros( int(L_points.size()), 2, CV_32F );
+    cv::Mat labelsMat = cv::Mat::zeros( int(L_points.size()), 1, CV_32SC1 );
+    
+    for ( int k = 0, i = 0; i < int(trainingDataMat.total()); i += 2, k++ )
+    {
+        trainingDataMat.at< float >(i) = L_points.at(k).x;
+        trainingDataMat.at< float >(i + 1) = L_points.at(k).y;
+    }
+    for ( int i = 0; i < int(L_points.size()); i++ )
+    {
+        labelsMat.at< int >(i) = L_points.at(i).z;
+    }
+//    std::cout << "trainingDataMat = " << trainingDataMat << std::endl;
+//    std::cout << "labelsMat = " << labelsMat << std::endl;
+    
+    // Train the SVM
+    cv::Ptr< cv::ml::SVM > svm = cv::ml::SVM::create();
+    svm->setType( cv::ml::SVM::C_SVC );
+    svm->setKernel( cv::ml::SVM::LINEAR );
+    svm->setTermCriteria( cv::TermCriteria( cv::TermCriteria::MAX_ITER, 100, 1e-6) );
+    svm->train( trainingDataMat, cv::ml::ROW_SAMPLE, labelsMat );
+    
+    cv::Vec3b green(0,255,0), blue(255,0,0);
+    for (int i = 0; i < line_mask.rows; i++)
+    {
+        for (int j = 0; j < line_mask.cols; j++)
+        {
+            cv::Mat sampleMat = (cv::Mat_< float >(1,2) << j,i);
+            float response = svm->predict(sampleMat);
+            if (response > 0.0f)
+                line_mask.at< cv::Vec3b >(i,j)  = green;
+            else 
+                line_mask.at< cv::Vec3b >(i,j)  = blue;
+        }
+    }
+    
+    // Support vectors
+    cv::Mat sv = svm->getUncompressedSupportVectors();
+//    std::cout << "sv = " << sv << std::endl;
+    cv::cvtColor( plot, plot, cv::COLOR_RGB2BGR );
+    cv::flip( plot, plot, 0);
+    for ( int i = 0; i < sv.rows; i++ )
+    {
+        cv::circle( plot, cv::Point(sv.row(i)), 
+                    5, cv::Scalar(0,0,0), 2, cv::LINE_8, 0 );
+    }
+    cv::flip( plot, plot, 0);
+    cv::flip( line_mask, line_mask, 0); // flip for correct axis
+    
+    cv::addWeighted( line_mask, -0.2, plot, 1.0, 0.0, plot );
+    cv::cvtColor( plot, plot, cv::COLOR_BGR2RGB );
+    q_plot = QImage( plot.data, 
+                     plot.cols, 
+                     plot.rows, 
+                     int(plot.step),
+                     QImage::Format_RGB888 );
+    ui->label_plot->setPixmap( QPixmap::fromImage(q_plot));
     
 }
 

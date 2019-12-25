@@ -3,6 +3,7 @@
 
 //#include <vector>
 #include <iostream>
+#include <set>
 
 //Qt
 #include <QtCore>
@@ -23,6 +24,9 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/ml.hpp>
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 QT_BEGIN_NAMESPACE
@@ -55,7 +59,8 @@ private slots:
 private:
     Ui::MainWindow *ui;
     
-    cv::Mat plot;
+    int width = 380, height = 380;
+    cv::Mat plot, line_mask;
     QImage q_plot;
     
     std::map<int, cv::Point3i> L_points;
