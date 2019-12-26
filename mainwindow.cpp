@@ -181,6 +181,17 @@ void MainWindow::calculateSVM()
         cv::circle( plot, cv::Point(sv.row(i)), 
                     5, cv::Scalar(0,0,0), 2, cv::LINE_8, 0 );
     }
+    ui->UP->clear();
+    for ( auto i : U_points )
+    {
+        cv::Mat sampleMat = (cv::Mat_< float >(1,2) << i.second.x,i.second.y);
+        float response = svm->predict(sampleMat);
+        i.second.z = int(response);
+        ui->UP->appendPlainText( QString("X[") + QString::number(i.first) + 
+                                 QString("]( x1 | x2 ) = ") + QString::number(i.second.x) + 
+                                 QString(" | ") + QString::number(i.second.y) + QString(",  ") +
+                                 QString("Y = ") + QString::number(i.second.z) );
+    }
     cv::flip( plot, plot, 0);
     cv::flip( line_mask, line_mask, 0); // flip for correct axis
     
